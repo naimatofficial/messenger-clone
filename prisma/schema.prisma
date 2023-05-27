@@ -1,0 +1,112 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// User model represents a user in the system. 👤
+model User {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  name String? 
+  email String? @unique
+  emailVerified DateTime?
+  image String?
+  hashedPassword String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // IDs of conversations the user is part of.
+  conversationIds String[] @db.ObjectId
+  // Conversations the user is part of.
+  conversations Conversation[] @relation(fields: [conversationIds], references: [id])
+
+  // IDs of messages seen by the user.
+  seenMessageIds String[] @db.ObjectId
+  // Messages seen by the user.
+  seenMessages Message[] @relation("Seen", fields: [seenMessageIds], references: [id])
+
+  // User's linked accounts.
+  accounts Account[]
+  // Messages sent by the user.
+  messages Message[]
+}
+
+// Account model represents a linked account for a user. 🔗
+model Account {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  // ID of the user associated with this account.
+  userId String @db.ObjectId
+  // Type of the account.
+  type String
+  // Provider of the account.
+  provider String
+  // ID of the account from the provider.
+  providerAccountId String
+  refresh_token String @db.String
+  access_token String @db.String
+  expires_at Int?
+  token_type String? 
+  scope String? 
+  id_token String? @db.String
+  session_state String?
+
+  // User associated with this account.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// Conversation model represents a conversation. 💬
+model Conversation {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  // Timestamp when the conversation was created.
+  createdAt DateTime @default(now())
+  // Timestamp of the last message in the conversation.
+  lastMessageAt DateTime @default(now())
+  // Name of the conversation.
+  name String?
+  // Flag indicating if the conversation is a group conversation.
+  isGroup Boolean?
+
+  // IDs of messages in the conversation.
+  messageIds String[] @db.ObjectId
+  // Messages in the conversation.
+  messages Message[]
+
+  // IDs of users participating in the conversation.
+  userIds String[] @db.ObjectId
+  // Users participating in the conversation.
+  users User[] @relation(fields: [userIds], references: [id])
+}
+
+// Message model represents a message. 💬
+model Message {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  // Body/content of the message.
+  body String?
+  // Image attached to the message.
+  image String?
+  // Timestamp when the message was created.
+  createdAt DateTime @default(now())
+
+  // IDs of users who have seen the message.
+  seenIds String[] @db.ObjectId
+  // Users who have seen the message.
+  seen User[] @relation("Seen", fields: [seenIds], references: [id])
+
+  // ID of the conversation the message belongs to.
+  conversationId String @db.ObjectId
+  // Conversation the message belongs to.
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // ID of the user who sent the message.
+  senderId String @db.ObjectId
+  // User who sent the message.
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
